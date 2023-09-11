@@ -1,3 +1,10 @@
+/*
+ALUNO:	JOSE IVINES MATOS SILVA
+PROFESSOR: kYLER COSTA GORGONIO
+DISCIPLINA: SISTEMAS EM TEMPO REAL
+PERIODO: 2023.1
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -17,32 +24,26 @@ sem_t sem_vazio;
 sem_t sem_completo;
 pthread_mutex_t mutex; // CRIANDO ACESSO A SEÇÃO CRITICA POR EXCLUSÃO MÚTUA- APENAS UMA THREAD OU PROCESSO TEM ACESSO POR VEZ
 
-void *maquina_produtora(void *maq_produtora) {
+void *maquina_produtora(void *maq_produtora){
     while(1){
         produto = rand() % 100; //PRODUZ UM NÚMERO ALEATÓRIO ENTRE 0 E 99
-
         sem_wait(&sem_vazio); //O SEMAFORO EM ESPERA RECEBE UM ESPAÇO DE MEMÓRIA VAZIO(PARA DECREMENTAR ATÉ CHEGAR EM 0)
-      
         pthread_mutex_lock(&mutex);
-
+      
         buffer[pocicao_inicio] = produto;
         pocicao_inicio = (pocicao_inicio + 1) % TAM_BUFFER;// PULA PARA A PROXIMA POSIÇÃO [EX: (0 + 160)/10 =60 ] 
-
-        printf("A Maquina produtora %d produziu: %d\n", *((int *)maq_produtora), produto);
-
-        pthread_mutex_unlock(&mutex); //BUFER É DESBLOQUEADO
-        sem_post(&sem_completo); //INCREMENTA O SEMAFORO,OUTRA THREAD/PROCESSO PODE ENTRAR EM WAIT(ESPERA) PARA REALIZAR O BLOQUEIO DO DO BUFFER(pthread_mutex_lock)
-        sleep(1); //ESPERA 1 SEGUNDO
       
+        printf("A Maquina produtora %d produziu: %d\n", *((int *)maq_produtora), produto);
+      
+        pthread_mutex_unlock(&mutex);
+        sem_post(&sem_completo); //INCREMENTA O SEMAFORO,OUTRA THREAD/PROCESSO PODE ENTRAR EM WAIT(ESPERA) PARA REALIZAR O BLOQUEIO DO DO BUFFER(pthread_mutex_lock)
+        sleep(1);
     }
 		    pthread_exit(NULL);//THREAD É FINALIZADA
-
-	}
+}
 
 
 void *maquina_consumidora(void *maq_consumidora) {//FUNÇÃO PARA RETIRAR DADOS DO INSERIDOS DO BUFFER
-
-	
     do{
         sem_wait(&sem_completo); // SEMAFORO ESPERA SER LIBERADO(TER UMA POSIÇÃO DISPONÍVEL)
         pthread_mutex_lock(&mutex); //BLOQUEIA O ACESSO AO BUFFER
@@ -70,10 +71,9 @@ int main() {
 
     int produtoras[MAQNAS_PRODUTORAS];
     int comsumidoras[MAQNAS_CONSUMIDORAS];
+    int j=0;
   
-    int j=0;//CONTADOR PARA O LOOP ABAIXO
-    do{
-      
+    while(1){
     for (i = 0; i < MAQNAS_PRODUTORAS; i++) {
         produtoras[i] = i + 1;
         pthread_create(&produzir[i], NULL, maquina_produtora, &produtoras[i]);
@@ -92,7 +92,7 @@ int main() {
         pthread_join(comsumir[i], NULL);
     }
       j++;
-    }while(j<50);
+    }
   
 	
 	//DESTROID SEMAFOROS
