@@ -1,0 +1,104 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+#define TAM_BUFFER 10
+#define MAQNAS_PRODUTORAS 10 //  MAQUINAS PRODUTORAS
+#define MAQNAS_CONSUMIDORAS 10 //  MAQUINAS CONSUMIDORAS
+
+//VARIÁVEIS GLOBAIS
+int buffer[TAM_BUFFER];
+int pocicao_inicio = 0; 
+int posicao_fim = 0; 
+int produto,count;//ITEM PRODUZIDO, CONTADOR.
+sem_t sem_vazio; 
+sem_t sem_completo;
+pthread_mutex_t mutex; // CRIANDO ACESSO A SEÇÃO CRITICA POR EXCLUSÃO MÚTUA- APENAS UMA THREAD OU PROCESSO TEM ACESSO POR VEZ
+
+void *maquina_produtora(void *maq_produtora) {
+    while(1){
+        produto = rand() % 100; //PRODUZ UM NÚMERO ALEATÓRIO ENTRE 0 E 99
+
+        sem_wait(&sem_vazio); //O SEMAFORO EM ESPERA RECEBE UM ESPAÇO DE MEMÓRIA VAZIO(PARA DECREMENTAR ATÉ CHEGAR EM 0)
+      
+        pthread_mutex_lock(&mutex);
+
+        buffer[pocicao_inicio] = produto;
+        pocicao_inicio = (pocicao_inicio + 1) % TAM_BUFFER;// PULA PARA A PROXIMA POSIÇÃO [EX: (0 + 160)/10 =60 ] 
+
+        printf("A Maquina produtora %d produziu: %d\n", *((int *)maq_produtora), produto);
+
+        pthread_mutex_unlock(&mutex); //BUFER É DESBLOQUEADO
+        sem_post(&sem_completo); //INCREMENTA O SEMAFORO,OUTRA THREAD/PROCESSO PODE ENTRAR EM WAIT(ESPERA) PARA REALIZAR O BLOQUEIO DO DO BUFFER(pthread_mutex_lock)
+        sleep(1); //ESPERA 1 SEGUNDO
+      
+    }
+		    pthread_exit(NULL);//THREAD É FINALIZADA
+
+	}
+
+
+void *maquina_consumidora(void *maq_consumidora) {//FUNÇÃO PARA RETIRAR DADOS DO INSERIDOS DO BUFFER
+
+	
+    do{
+        sem_wait(&sem_completo); // SEMAFORO ESPERA SER LIBERADO(TER UMA POSIÇÃO DISPONÍVEL)
+        pthread_mutex_lock(&mutex); //BLOQUEIA O ACESSO AO BUFFER
+        produto = buffer[posicao_fim];// O PROCCESSO A SEGUIR É RETIRAR O ULTIMO PROCESSO QUE FOI CRIADO PRIMEIRO
+        posicao_fim = (posicao_fim + 1) % TAM_BUFFER;//INCREMENTA A POSIÇÃO
+
+        printf("A Maquina consumidora (%d) concluiu o produto: (%d)\n", *((int *)maq_consumidora), produto);
+        pthread_mutex_unlock(&mutex); //LIBERAR O ACESSO AO BUFFER
+        sem_post(&sem_vazio); // SEMAFORO É INCREMENTADO PARA LIBERAR O PROXIMO PROCESSO,
+        sleep(1); 
+        
+    }while(1);
+    
+    pthread_exit(NULL);//THREAD É FINALIZADA
+}
+
+int main() {
+	int i;
+    pthread_t produzir[MAQNAS_PRODUTORAS];//INTACIANDO UM VETOR DE THREADS/PROCESSOS DE N PRODUTORES 
+    pthread_t comsumir[MAQNAS_CONSUMIDORAS];//INTACIANDO UM VETOR DE THREADS/PROCESSOS DE N CONSUMIDORES
+
+    sem_init(&sem_vazio, 0, TAM_BUFFER);//INICIALIZA O SEMAFORO (ENDEREÇO DO SEMAFORO COM ESPAÇO NO BUFER, COMPARTILHADO APENAS ENTRE THREADS, TAMANHO INICIAL DO SEMAFORO)
+    sem_init(&sem_completo, 0, 0);//(ENDEREÇO DO SEMAFORO SEM ESPAÇO NO BUFFER, COMPARTILHADO APENAS ENTRE THREADS, TAMANHO INICIAL DO SEMAFORO)
+    pthread_mutex_init(&mutex, NULL);
+
+    int produtoras[MAQNAS_PRODUTORAS];
+    int comsumidoras[MAQNAS_CONSUMIDORAS];
+  
+    int j=0;//CONTADOR PARA O LOOP ABAIXO
+    do{
+      
+    for (i = 0; i < MAQNAS_PRODUTORAS; i++) {
+        produtoras[i] = i + 1;
+        pthread_create(&produzir[i], NULL, maquina_produtora, &produtoras[i]);
+    }
+
+    for ( i = 0; i < MAQNAS_CONSUMIDORAS; i++) {
+        comsumidoras[i] = i + 1;
+        pthread_create(&comsumir[i], NULL, maquina_consumidora, &comsumidoras[i]);
+    }
+
+    for ( i = 0; i < MAQNAS_PRODUTORAS; i++) {
+        pthread_join(produzir[i], NULL);
+    }
+
+    for ( i = 0; i < MAQNAS_CONSUMIDORAS; i++) {
+        pthread_join(comsumir[i], NULL);
+    }
+      j++;
+    }while(j<50);
+  
+	
+	//DESTROID SEMAFOROS
+    sem_destroy(&sem_vazio);
+    sem_destroy(&sem_completo);
+    pthread_mutex_destroy(&mutex);
+
+    return 0;
+}
