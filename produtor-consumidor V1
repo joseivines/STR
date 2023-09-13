@@ -1,0 +1,58 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+int buffer;
+int contador;
+
+void produzir( int valor)
+{
+	while(1){
+		
+		if(contador ==0){//se contador for igual a zero, há vaga no bufer de 1 posição
+			contador=1;
+			buffer = valor;
+		}
+		else{
+			printf("\nBuffer cheio\n\n");
+			break;
+		}
+	}
+}
+
+int consome()
+{
+	contador = 0;
+	while(1)
+	{
+		if(contador == 1 ){
+			contador = 0;
+			return buffer;
+		}
+		else
+		{
+			printf("\nBuffer foi esvaziado\n");
+			break;
+		}
+	}
+	
+}
+
+
+int main ( )
+{
+	int in, out;
+	printf("\n Teste do programa produtor consumidor (BUFFER DE 1 POSICAO.\n PREENCHER O BUFFER COM NUMEROS DE 0 A 99 COM GERENCIAMENTO DE SEÇÃO CRÍTICA\n\n");
+	
+	while(1){
+		   in = rand()%100;
+		   printf("O ITEM PRODUZIDO FOI: %d \n",in);
+		   produzir(in);
+		   printf("O buffer armazenou o valor: %d\n",buffer);
+		   out = consome();
+		   printf("O ITEM: (%d) FOI COMSUMIDO DO BUFFER\n\n",buffer);
+		   
+	}
+	
+	
+}
